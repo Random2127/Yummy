@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yummy/screens/add.dart';
 import 'package:yummy/screens/favourites.dart';
-import 'package:yummy/screens/home.dart';
+import 'package:yummy/screens/chat.dart';
 import 'package:yummy/screens/params.dart';
 import 'package:yummy/widgets/custom_app_bar.dart';
 import 'package:yummy/widgets/custom_nav_bar.dart';
@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _screens = [HomeScreen(), AddScreen(), FavouritesScreen(), ParamsScreen()];
+    _screens = [ChatScreen(), AddScreen(), FavouritesScreen(), ParamsScreen()];
   }
 
   void _onItemTapped(int index) {
