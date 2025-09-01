@@ -1,7 +1,8 @@
-import 'package:dash_chat_2/dash_chat_2.dart';
+import 'dart:convert';
+
+import 'package:dash_chat/dash_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:markdown_widget/markdown_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -11,15 +12,14 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final Gemini gemini =
-      Gemini.instance; // Singleton instance to make call to API
+  // Singleton instance to make call to API
+  final Gemini _gemini = Gemini.instance;
   List<ChatMessage> messages = [];
-  ChatUser currentUser = ChatUser(id: "0", firstName: "User");
+  ChatUser currentUser = ChatUser(uid: '0', firstName: 'User');
   ChatUser geminiUser = ChatUser(
-    id: "1",
+    uid: "1",
     firstName: "Gemini",
-    profileImage:
-        "assets/images/google-gemini-icon-logo-png_seeklogo-623016.png",
+    avatar: "assets/images/google-gemini-icon-logo-png_seeklogo-623016.png",
   );
 
   @override
@@ -29,64 +29,40 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildUI() {
     return DashChat(
-      currentUser: currentUser,
-      onSend: _sendMessage,
       messages: messages,
+      user: currentUser,
+      onSend: _sendMessage,
     );
   }
 
   void _sendMessage(ChatMessage chatMessage) async {
     setState(() {
-      messages = [chatMessage, ...messages]; // Add my message to chat
+      messages = [chatMessage, ...messages];
     });
 
+    final messageText = chatMessage.text ?? '';
+    final response = await _gemini.prompt(parts: [Part.text(messageText)]);
+
+    final replyText = response?.output ?? '';
+
+    final reply = ChatMessage(
+      text: replyText,
+      user: geminiUser,
+      createdAt: DateTime.now(),
+      customProperties: {'isJson': _isJson(replyText)},
+    );
+
+    setState(() {
+      messages = [chatMessage, ...messages];
+    });
+  }
+
+  bool _isJson(String replyText) {
     try {
-      final question = chatMessage.text; //Extract my message
-      // send wrapping as text
-      // This question will need to be adapted to add/remove allergies,...
-      final response = await gemini.prompt(parts: [Part.text(question)]);
-
-      String output = "";
-
-      // grab the parts into a local non-nullable variable
-      final parts = response?.content?.parts;
-      if (parts != null && parts.isNotEmpty) {
-        for (final part in parts) {
-          // preferred safe extraction if the library exposes TextPart
-          if (part is TextPart) {
-            output += part.text;
-          } else {
-            // fallback: try to read a `text` field dynamically (wrapped in try/catch)
-            try {
-              final maybeText = (part as dynamic).text;
-              if (maybeText is String) output += maybeText;
-            } catch (_) {
-              // non-text part — ignore
-            }
-          }
-        }
-      }
-
-      final aiMessage = ChatMessage(
-        user: geminiUser,
-        createdAt: DateTime.now(),
-        text: output.isNotEmpty ? output : "No response",
-      );
-
-      setState(() {
-        messages = [aiMessage, ...messages];
-      });
-    } catch (e, st) {
-      // show a message in the chat of the error
-      print("Gemini error: $e\n$st");
-      final errorMessage = ChatMessage(
-        user: geminiUser,
-        createdAt: DateTime.now(),
-        text: "Error: ${e.toString()}",
-      );
-      setState(() {
-        messages = [errorMessage, ...messages];
-      });
+      jsonDecode(replyText);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 }
