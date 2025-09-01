@@ -1,6 +1,7 @@
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:markdown_widget/markdown_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -10,14 +11,15 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final Gemini gemini = Gemini.instance;
+  final Gemini gemini =
+      Gemini.instance; // Singleton instance to make call to API
   List<ChatMessage> messages = [];
   ChatUser currentUser = ChatUser(id: "0", firstName: "User");
   ChatUser geminiUser = ChatUser(
     id: "1",
     firstName: "Gemini",
     profileImage:
-        "https://images.seeklogo.com/logo-png/62/1/google-gemini-icon-logo-png_seeklogo-623016.png",
+        "assets/images/google-gemini-icon-logo-png_seeklogo-623016.png",
   );
 
   @override
@@ -35,12 +37,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage(ChatMessage chatMessage) async {
     setState(() {
-      messages = [chatMessage, ...messages];
+      messages = [chatMessage, ...messages]; // Add my message to chat
     });
 
     try {
-      final question = chatMessage.text;
-
+      final question = chatMessage.text; //Extract my message
+      // send wrapping as text
+      // This question will need to be adapted to add/remove allergies,...
       final response = await gemini.prompt(parts: [Part.text(question)]);
 
       String output = "";
@@ -74,7 +77,7 @@ class _ChatScreenState extends State<ChatScreen> {
         messages = [aiMessage, ...messages];
       });
     } catch (e, st) {
-      // better error logging and show a message in the chat
+      // show a message in the chat of the error
       print("Gemini error: $e\n$st");
       final errorMessage = ChatMessage(
         user: geminiUser,
