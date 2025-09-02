@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:yummy/consts.dart';
+import 'package:yummy/widgets/recipe_card.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -32,6 +36,31 @@ class _ChatScreenState extends State<ChatScreen> {
       currentUser: currentUser,
       onSend: onSend,
       messages: messages,
+
+      messageOptions: MessageOptions(
+        showTime: true,
+        borderRadius: 12,
+        showCurrentUserAvatar: true,
+        messageTextBuilder:
+            (
+              ChatMessage msg,
+              ChatMessage? previousMessage,
+              ChatMessage? nextMessage,
+            ) {
+              final isGemini = msg.user.id == geminiUser.id;
+              final data = msg.customProperties;
+
+              if (isGemini && data != null && data is Map<String, dynamic>) {
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  child: RecipeCard(json: jsonEncode(data)),
+                );
+              }
+              return Text(msg.text ?? '');
+            },
+      ),
     );
   }
 
@@ -40,7 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
       messages.insert(
         0,
         ChatMessage(
-          text: message.text,
+          text: message.text, // wrap with the prompt
           user: currentUser,
           createdAt: DateTime.now(),
         ),
@@ -48,17 +77,32 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final response = await _gemini.prompt(parts: [Part.text(message.text)]);
+      final response = await _gemini.prompt(
+        parts: [
+          Part.text(
+            'Return only raw JSON with this structure: '
+            '{"title": "...", "description": "...", "time": 30, "servings": 2, '
+            '"cuisine": "...", "ingredients": ["..."], "instructions": ["..."]}. '
+            'User request: ${message.text}',
+          ),
+        ],
+      );
       final reply = response?.output ?? '';
+      String cleaned = reply
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+
+      Map<String, dynamic>? recipeData = jsonDecode(cleaned);
 
       setState(() {
         messages.insert(
           0,
           ChatMessage(
-            text: reply,
+            customProperties: recipeData, // data comes here
             user: geminiUser,
             createdAt: DateTime.now(),
-            isMarkdown: true,
+            isMarkdown: false,
           ),
         );
       });
