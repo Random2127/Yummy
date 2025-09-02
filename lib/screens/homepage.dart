@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:yummy/screens/add.dart';
-import 'package:yummy/screens/favourites.dart';
-import 'package:yummy/screens/chat.dart';
-import 'package:yummy/screens/params.dart';
+import 'package:yummy/screens/add_screen.dart';
+import 'package:yummy/screens/chat_screen.dart';
+import 'package:yummy/screens/favourites_screen.dart';
+import 'package:yummy/screens/param_screen.dart';
 import 'package:yummy/widgets/custom_app_bar.dart';
 import 'package:yummy/widgets/custom_nav_bar.dart';
 
