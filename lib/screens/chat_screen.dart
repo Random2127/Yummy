@@ -1,113 +1,106 @@
-import 'dart:convert';
+import 'dart:math';
 
-import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_chat_core/flutter_chat_core.dart';
+import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:yummy/consts.dart';
-import 'package:yummy/widgets/recipe_card.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
-
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
   final Gemini _gemini = Gemini.instance;
-  ChatUser currentUser = ChatUser(
-    id: '0',
-    firstName: 'User',
-    profileImage: 'assets/images/IMG-20210404-WA0013.jpeg',
-  );
+  final _currentUserId = 'user1';
+  final _chatController = InMemoryChatController();
 
-  ChatUser geminiUser = ChatUser(
-    id: '1',
-    firstName: 'Gemini',
-    profileImage:
-        'assets/images/google-gemini-icon-logo-png_seeklogo-623016.png',
-  );
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
+  }
 
-  List<ChatMessage> messages = [];
+  Future<User> resolveUser(UserID id) async {
+    return User(id: id, name: id == _currentUserId ? 'You' : 'Gemini');
+  }
+
+  void _onMessageSend(String text) {
+    final userMsgId =
+        'u-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999)}';
+    final userMessage = TextMessage(
+      id: userMsgId,
+      authorId: _currentUserId,
+      text: text,
+      createdAt: DateTime.now(),
+    );
+
+    _chatController.insertMessage(userMessage);
+    _sendToGemini(text); // prompt
+  }
+
+  Future<void> _sendToGemini(String prompt) async {
+    final assistantId = 'g-${DateTime.now().millisecondsSinceEpoch}';
+    final placeholder = TextMessage(
+      id: assistantId,
+      authorId: 'gemini',
+      createdAt: DateTime.now(), //.toUtc() maybe
+      text: '',
+    );
+
+    _chatController.insertMessage(placeholder);
+
+    try {
+      final stream = _gemini.promptStream(parts: [Part.text(prompt)]);
+      var accumulated = '';
+
+      // Listen to partial outputs and update the assistant message
+      stream.listen(
+        (event) {
+          final chunk = event?.output ?? '';
+          accumulated += chunk;
+
+          final updated = TextMessage(
+            id: assistantId,
+            authorId: 'gemini',
+            createdAt: placeholder.createdAt,
+            text: accumulated,
+          );
+
+          // Update the existing message in the controller (UI will refresh)
+          _chatController.updateMessage(placeholder, updated);
+        },
+        onError: (err) {
+          final errorMsg = TextMessage(
+            id: assistantId,
+            authorId: 'gemini',
+            createdAt: placeholder.createdAt,
+            text: 'Error: $err',
+          );
+          _chatController.updateMessage(placeholder, errorMsg);
+        },
+      );
+    } catch (e) {
+      final err = TextMessage(
+        id: assistantId,
+        authorId: 'gemini',
+        createdAt: DateTime.now().toUtc(),
+        text: 'Failed to contact Gemini: $e',
+      );
+      _chatController.updateMessage(placeholder, err);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DashChat(
-      currentUser: currentUser,
-      onSend: onSend,
-      messages: messages,
-
-      messageOptions: MessageOptions(
-        showTime: true,
-        borderRadius: 12,
-        showCurrentUserAvatar: true,
-        messageTextBuilder:
-            (
-              ChatMessage msg,
-              ChatMessage? previousMessage,
-              ChatMessage? nextMessage,
-            ) {
-              final isGemini = msg.user.id == geminiUser.id;
-              final data = msg.customProperties;
-
-              if (isGemini && data != null && data is Map<String, dynamic>) {
-                return ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
-                  child: RecipeCard(json: jsonEncode(data)),
-                );
-              }
-              return Text(msg.text ?? '');
-            },
+    return Scaffold(
+      body: Chat(
+        currentUserId: _currentUserId,
+        resolveUser: resolveUser,
+        chatController: _chatController,
+        onMessageSend: _onMessageSend,
       ),
     );
-  }
-
-  void onSend(ChatMessage message) async {
-    setState(() {
-      messages.insert(
-        0,
-        ChatMessage(
-          text: message.text, // wrap with the prompt
-          user: currentUser,
-          createdAt: DateTime.now(),
-        ),
-      );
-    });
-
-    try {
-      final response = await _gemini.prompt(
-        parts: [
-          Part.text(
-            'Return only raw JSON with this structure: '
-            '{"title": "...", "description": "...", "time": 30, "servings": 2, '
-            '"cuisine": "...", "ingredients": ["..."], "instructions": ["..."]}. '
-            'User request: ${message.text}',
-          ),
-        ],
-      );
-      final reply = response?.output ?? '';
-      String cleaned = reply
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-
-      Map<String, dynamic>? recipeData = jsonDecode(cleaned);
-
-      setState(() {
-        messages.insert(
-          0,
-          ChatMessage(
-            customProperties: recipeData, // data comes here
-            user: geminiUser,
-            createdAt: DateTime.now(),
-            isMarkdown: false,
-          ),
-        );
-      });
-    } catch (e) {
-      print('Error from Gemini: $e');
-    }
   }
 }
