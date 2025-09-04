@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:flutter/services.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -15,6 +16,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final Gemini _gemini = Gemini.instance;
   final _currentUserId = 'user1';
   final _chatController = InMemoryChatController();
+  String? _recipePrompt;
 
   @override
   void dispose() {
@@ -26,6 +28,14 @@ class _ChatScreenState extends State<ChatScreen> {
     return User(id: id, name: id == _currentUserId ? 'You' : 'Gemini');
   }
 
+  // Adding custom prompt
+  Future<void> _loadPrompt() async {
+    final prompt = await rootBundle.loadString('assets/prompt/recipe.txt');
+    setState(() {
+      _recipePrompt = prompt;
+    });
+  }
+
   void _onMessageSend(String text) {
     final userMsgId =
         'u-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999)}';
@@ -33,26 +43,31 @@ class _ChatScreenState extends State<ChatScreen> {
       id: userMsgId,
       authorId: _currentUserId,
       text: text,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toUtc(),
+
+      // gemini.generateFromText(fullPrompt);
     );
 
+    // Will need to add prompt before message
+    final fullPrompt = "${_recipePrompt ?? ''} $text";
+
     _chatController.insertMessage(userMessage);
-    _sendToGemini(text); // prompt
+    _sendToGemini(fullPrompt); // prompt
   }
 
-  Future<void> _sendToGemini(String prompt) async {
+  Future<void> _sendToGemini(String fullPrompt) async {
     final assistantId = 'g-${DateTime.now().millisecondsSinceEpoch}';
     final placeholder = TextMessage(
       id: assistantId,
       authorId: 'gemini',
-      createdAt: DateTime.now(), //.toUtc() maybe
+      createdAt: DateTime.now().toUtc(),
       text: '',
     );
 
     _chatController.insertMessage(placeholder);
 
     try {
-      final stream = _gemini.promptStream(parts: [Part.text(prompt)]);
+      final stream = _gemini.promptStream(parts: [Part.text(fullPrompt)]);
       var accumulated = '';
 
       // Listen to partial outputs and update the assistant message

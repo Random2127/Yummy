@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:yummy/consts.dart';
 import 'package:yummy/screens/homepage.dart';
 
-void main() {
-  Gemini.init(apiKey: GEMINI_API_KEY);
+void main() async {
+  await dotenv.load(fileName: ".env");
+  String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+  //debugPrint("Gemini API key loaded: $apiKey");
+  Gemini.init(apiKey: apiKey);
   runApp(const MyApp());
 }
 
