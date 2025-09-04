@@ -1,22 +1,12 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:yummy/models/recipe.dart';
 
 class RecipeCard extends StatelessWidget {
-  final String json;
-  const RecipeCard({super.key, required this.json});
+  final Recipe recipe;
+  const RecipeCard({super.key, required this.recipe});
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> data = jsonDecode(json);
-    final String title = data['title'] ?? 'Recipe';
-    final String description = data['description'] ?? '';
-    final int time = data['time'] ?? 0;
-    final int servings = data['servings'] ?? 0;
-    final String cuisine = data['cuisine'] ?? '';
-    final List ingredients = data['ingredients'] ?? [];
-    final List instructions = data['instructions'] ?? [];
-
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -26,11 +16,11 @@ class RecipeCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              title,
+              recipe.title,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(description, style: const TextStyle(fontSize: 14)),
+            Text(recipe.description, style: const TextStyle(fontSize: 14)),
             SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -39,34 +29,34 @@ class RecipeCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.access_time, size: 16),
                     const SizedBox(width: 4),
-                    Text('$time mins'),
+                    Text('${recipe.time} mins'),
                   ],
                 ),
                 Row(
                   children: [
                     const Icon(Icons.people, size: 16),
                     const SizedBox(width: 4),
-                    Text('$servings servings'),
+                    Text('${recipe.servings} servings'),
                   ],
                 ),
                 Text(
-                  cuisine,
+                  recipe.cuisine,
                   style: const TextStyle(fontStyle: FontStyle.italic),
                 ),
               ],
             ),
-            Divider(height: 24, thickness: 1),
+            const Divider(height: 24, thickness: 1),
             const Text(
               'Ingredients',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            for (var item in ingredients)
+            for (var item in recipe.ingredients)
               Text('• $item', style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
-            for (int i = 0; i < instructions.length; i++)
+            for (int i = 0; i < recipe.instructions.length; i++)
               Text(
-                '${i + 1}. ${instructions[i]}',
+                '${i + 1}. ${recipe.instructions[i]}',
                 style: const TextStyle(fontSize: 14),
               ),
           ],

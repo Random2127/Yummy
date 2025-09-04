@@ -5,6 +5,8 @@ import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter/services.dart';
+import 'package:yummy/models/recipe.dart';
+import 'package:yummy/utils/json_parser.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -73,7 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Listen to partial outputs and update the assistant message
       stream.listen(
         (event) {
-          final chunk = event?.output ?? '';
+          final chunk = event?.output ?? ''; // this just grabs the chunk
           accumulated += chunk;
 
           final updated = TextMessage(
@@ -83,8 +85,15 @@ class _ChatScreenState extends State<ChatScreen> {
             text: accumulated,
           );
 
-          // Update the existing message in the controller (UI will refresh)
+          // change placeholder for updated
           _chatController.updateMessage(placeholder, updated);
+        },
+        onDone: () {
+          // Now I pares emessage
+          final recipes = parseRecipes(accumulated);
+          if (recipes.isNotEmpty) {
+            _displayRecipeCard(recipes.first);
+          }
         },
         onError: (err) {
           final errorMsg = TextMessage(
@@ -117,5 +126,19 @@ class _ChatScreenState extends State<ChatScreen> {
         onMessageSend: _onMessageSend,
       ),
     );
+  }
+
+  void _displayRecipeCard(Recipe recipe) {
+    setState(() {
+      _chatController.insertMessage(
+        TextMessage(
+          id: 'recipe-${DateTime.now().millisecondsSinceEpoch}',
+          authorId: 'system',
+          createdAt: DateTime.now().toUtc(),
+          text: '[Recipe]',
+          metadata: {'type': 'recipe', 'recipe': recipe.toJson()},
+        ),
+      );
+    });
   }
 }
