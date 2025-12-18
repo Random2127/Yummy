@@ -1,4 +1,13 @@
-Return only one recipe following this JSON structure:
+Return exactly ONE JSON object.
+The response MUST start with '{' and end with '}'.
+Do NOT include:
+- explanations
+- markdown
+- backticks
+- extra text before or after the JSON
+
+JSON structure:
 {"title": "...", "description": "...", "time": 30, "servings": 2,
-"cuisine": "...", "ingredients": ["..."], "instructions": ["..."]}.
+ "cuisine": "...", "ingredients": ["..."], "instructions": ["..."]}
+
 User request:
